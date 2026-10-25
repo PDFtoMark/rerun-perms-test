@@ -1,0 +1,23 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "attempt=$GITHUB_RUN_ATTEMPT event=$GITHUB_EVENT_NAME"
+          echo "actor=$GITHUB_ACTOR triggering_actor=$GITHUB_TRIGGERING_ACTOR"
+          echo "pr_head_repo=${{ github.event.pull_request.head.repo.full_name || '-' }} pr_from_fork=${{ github.event.pull_request.head.repo.fork || '-' }}"
+          echo "secret_probe=${{ secrets.PROBE_SECRET == '' && 'ABSENT' || 'VISIBLE' }}"
+          echo "--- token permissions map (GET /repos/{repo}) ---"
+          gh api "/repos/$GITHUB_REPOSITORY" --jq '{permissions,role_name}' || echo "no permissions field returned"
+          echo "--- write probe (create label) ---"
+          if gh api --method POST "/repos/$GITHUB_REPOSITORY/labels" -f name="probe-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" -f color=ededed >/dev/null 2>&1; then echo "WRITE_OK"; else echo "WRITE_DENIED"; fi
+      - name: Fail so rerun-failed-jobs has something to do
+        run: exit 1
