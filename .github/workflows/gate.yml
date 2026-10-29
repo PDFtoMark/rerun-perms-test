@@ -1,0 +1,48 @@
+name: gate-test
+on:
+  issue_comment:
+    types: [created]
+concurrency:
+  group: gate-${{ github.event.issue.number }}
+  cancel-in-progress: true
+jobs:
+  update:
+    if: >-
+      ${{ github.event.issue.pull_request
+          && startsWith(github.event.comment.body, '/update-lavamoat-policies')
+          && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+      PR_NUMBER: ${{ github.event.issue.number }}
+    steps:
+      - name: Fetch PR metadata
+        id: pr
+        run: |
+          INFO=$(gh pr view "${PR_NUMBER}" --repo "${REPO}" --json isCrossRepository,headRefOid,headRefName)
+          {
+            echo "is_cross_repo=$(echo "$INFO" | jq -r '.isCrossRepository')"
+            echo "head_sha=$(echo "$INFO" | jq -r '.headRefOid')"
+            echo "head_branch=$(echo "$INFO" | jq -r '.headRefName')"
+          } >> "$GITHUB_OUTPUT"
+      - name: Show gate results
+        run: |
+          echo "association=[${{ github.event.comment.author_association }}]"
+          echo "is_cross_repo=[${{ steps.pr.outputs.is_cross_repo }}]"
+          echo "head_branch=[${{ steps.pr.outputs.head_branch }}]"
+      - name: Reject cross-repo PRs
+        if: ${{ steps.pr.outputs.is_cross_repo == 'true' }}
+        run: |
+          echo "CROSS-REPO-REJECTED"
+          exit 1
+      - name: Post-gate branch usage
+        run: |
+          BRANCH='${{ steps.pr.outputs.head_branch }}'
+          echo "BRANCH is: [${BRANCH}]"
+          echo "reached-post-gate"
