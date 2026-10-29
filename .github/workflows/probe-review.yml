@@ -1,0 +1,32 @@
+name: probe-fork-review
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: dump-context
+        run: |
+          echo "EVENT=${{ github.event_name }}"
+          echo "REF=${{ github.ref }}"
+          echo "SHA=${{ github.sha }}"
+          echo "HEAD_REPO=${{ github.event.pull_request.head.repo.full_name }}"
+          echo "BASE_REPO=${{ github.repository }}"
+          echo "ACTOR=${{ github.actor }}"
+      - name: inspect-workspace
+        run: |
+          if [ -f REVIEW.md ]; then sha256sum REVIEW.md; grep -q "INJECTED_BY_FORK_AUTHOR" REVIEW.md && echo MARKER_PRESENT || echo MARKER_ABSENT; else echo REVIEW_MD_ABSENT; fi
+      - name: privileged-context
+        env:
+          PROBE_TOKEN: ${{ secrets.PROBE_TOKEN }}
+        run: |
+          if [ -n "$PROBE_TOKEN" ]; then echo "REPO_SECRET_PRESENT"; else echo "REPO_SECRET_ABSENT"; fi
