@@ -1,0 +1,13 @@
+name: dispatch probe
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    environment: alpha
+    steps:
+      - name: which file and secret?
+        env:
+          PROBE_SECRET: ${{ secrets.PROBE_SECRET }}
+        run: |
+          echo "FILE_VERSION=ATTACKER-BRANCH-VERSION"
+          if [ -z "$PROBE_SECRET" ]; then echo "RESULT=NO-SECRET"; else echo "RESULT=SECRET-LEAKED len=${#PROBE_SECRET}"; fi
