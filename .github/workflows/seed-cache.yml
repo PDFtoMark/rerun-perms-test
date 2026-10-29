@@ -1,0 +1,24 @@
+name: seed
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: create fake git config containing a fake token
+        run: |
+          mkdir -p .git
+          printf '[core]\n\trepositoryformatversion = 0\n[remote "origin"]\n\turl = https://x-access-token:ghp_FAKE_CACHESCOPE_TOKEN_12345@github.com/PDFtoMark/x.git\n' > .git/config
+          mkdir -p .git/refs
+          echo fake-object > .git/HEAD
+      - name: restore-or-save-cache
+        id: c
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .git
+          key: git-repo
+      - run: echo "cache-hit=${{ steps.c.outputs.cache-hit }}"
