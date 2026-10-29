@@ -1,0 +1,27 @@
+name: compile-sim
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.event.issue.pull_request != '' && startsWith(github.event.comment.body, '/compile-sim')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Restore cached git repository
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .git
+          key: git-repo-sim
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Push normally (simulated exactly like command-compile.yml)
+        env:
+          BOT_TOKEN: ${{ secrets.SIM_BOT_PAT }}
+        run: |
+          git remote set-url origin "https://x-access-token:${BOT_TOKEN}@github.com/${{ github.repository }}.git"
+          git ls-remote origin >/dev/null && echo "auth with bot token OK"
