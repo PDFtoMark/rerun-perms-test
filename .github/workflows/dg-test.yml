@@ -1,0 +1,15 @@
+name: dg-test
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/s.json <<JSON
+          {"version":0,"job":{"correlator":"t","id":"t"},"sha":"$GITHUB_SHA","ref":"$GITHUB_REF","detector":{"name":"t","version":"1.0","url":"https://example.com"},"manifests":{"a.txt":{"name":"a.txt","file":{"source_location":"a.txt"},"resolved":{"pkg:npm/left-pad@1.0.0":{"relationship":"direct","dependencies":[]}}}}}
+          JSON
+          curl -sS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/${{ github.repository }}/dependency-graph/snapshots" -d @/tmp/s.json
