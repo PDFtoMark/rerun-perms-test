@@ -1,0 +1,37 @@
+name: gab env probe
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe git config and permission API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -u
+          echo "== git lfs"
+          git lfs version || echo "git-lfs missing"
+          echo "== system config"
+          git config --system --list 2>&1 | grep -i "lfs\|filter" || echo "no lfs/filter in system config"
+          echo "== global config"
+          git config --global --list 2>&1 | grep -i "lfs\|filter" || echo "no lfs/filter in global config"
+          echo "== all config grep"
+          git config --list --show-origin 2>&1 | grep -i "lfs\|filter" || echo "no lfs/filter anywhere"
+          echo "== /etc/gitconfig"
+          cat /etc/gitconfig 2>&1 || true
+          echo "== ~/.gitconfig"
+          cat "$HOME/.gitconfig" 2>&1 || true
+          echo "== permission API as workflow token"
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          for u in octocat lazyhacker6; do
+            code=$(curl -s -o /tmp/perm.out -w '%{http_code}' --max-time 20 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "${api}/collaborators/${u}/permission")
+            echo "user=${u} status=${code} body=$(cat /tmp/perm.out)"
+          done
