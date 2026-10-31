@@ -1,0 +1,28 @@
+name: BF Probe
+on:
+  workflow_run:
+    workflows: ["BF Build"]
+    types: [completed]
+    branches: ["master"]
+
+permissions: write-all
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: report
+        run: |
+          echo "FILTER PASSED"
+          echo "head_branch=${{ github.event.workflow_run.head_branch }}"
+          echo "head_repo=${{ github.event.workflow_run.head_repository.full_name }}"
+          echo "event=${{ github.event.workflow_run.event }}"
+          echo "conclusion=${{ github.event.workflow_run.conclusion }}"
+          echo "ref=${{ github.ref }}"
+      - name: prove write access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/bf-probe-${GITHUB_RUN_ID}" \
+            -f sha="${{ github.sha }}" > /dev/null && echo TAG_CREATED
