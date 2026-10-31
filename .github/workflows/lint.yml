@@ -1,0 +1,12 @@
+name: Lint
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: base version marker
+        run: echo "BASE_LINT_VERSION_RAN"
