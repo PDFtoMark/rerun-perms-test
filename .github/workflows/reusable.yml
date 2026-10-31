@@ -1,0 +1,13 @@
+name: reusable
+on:
+  workflow_call:
+    secrets:
+      TOK:
+        required: false
+jobs:
+  j:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "callee ran, secret len ${#TOK}"
+        env:
+          TOK: ${{ secrets.TOK }}
