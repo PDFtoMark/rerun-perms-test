@@ -1,0 +1,16 @@
+name: Health
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: make artifact
+        run: |
+          mkdir -p output
+          printf '## Health summary\n\nLEGITIMATE-CONTENT-FROM-MAIN\n' > output/comment.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: output
+          path: output/
