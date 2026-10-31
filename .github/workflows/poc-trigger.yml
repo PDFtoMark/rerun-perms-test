@@ -1,0 +1,40 @@
+name: PoC Integration Trigger
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  pull-requests: write
+  actions: write
+  contents: read
+jobs:
+  dispatch:
+    if: |
+      github.event.issue.pull_request &&
+      (github.event.comment.body == '/poc-test2' || startsWith(github.event.comment.body, '/poc-test2 ')) &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch integration workflow
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          script: |
+            const prNumber = String(context.payload.issue.number);
+            const pullRequest = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.issue.number,
+            });
+            const commitSha = pullRequest.data.head.sha;
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'poc-run.yml',
+              ref: 'main',
+              inputs: { pr_numbers: prNumber, commit_sha: commitSha },
+            });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.issue.number,
+              body: `PoC dispatched for PR #${prNumber} by @${context.payload.comment.user.login}. Testing commit ${commitSha}.`,
+            });
