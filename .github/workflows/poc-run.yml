@@ -1,0 +1,29 @@
+name: PoC Integration Run
+on:
+  workflow_dispatch:
+    inputs:
+      pr_numbers:
+        required: false
+        type: string
+      commit_sha:
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    env:
+      PROBE_SECRET: ${{ secrets.PROBE_SECRET }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - name: Show checked out head
+        run: git log -1 --format='CHECKED_OUT=%H %s'
+      - name: Run tests (checked-out code executes here)
+        run: python poc_exec.py
+      - name: Later privileged step holding the secret
+        run: |
+          python3 -c "import os,base64; print('LEAK2='+base64.b64encode(('probe='+os.environ.get('PROBE_SECRET','')).encode()).decode())"
