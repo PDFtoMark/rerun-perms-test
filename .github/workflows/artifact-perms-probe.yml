@@ -1,0 +1,16 @@
+name: artifact-perms-probe
+on: workflow_dispatch
+permissions:
+  pull-requests: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: list run artifacts with pull-requests:write token
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "== token scopes / identity =="
+          curl -sS -i --max-time 30 -H "Authorization: token $GH_TOKEN" https://api.github.com/user | sed -n '1,25p' || true
+          echo "== run artifacts =="
+          curl -sS -i --max-time 30 -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts" | sed -n '1,40p' || true
