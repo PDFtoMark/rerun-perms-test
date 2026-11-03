@@ -9,7 +9,7 @@ jobs:
       - name: make artifact
         run: |
           mkdir -p output
-          printf '## Health summary\n\nLEGITIMATE-CONTENT-FROM-MAIN\n' > output/comment.md
+          printf '## PR Health\n\nb3eb24a0ce8b — attacker-controlled bot comment\n\n[@dart-lang/sdk-team](https://example.invalid/phish)\n' > output/comment.md
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: output
