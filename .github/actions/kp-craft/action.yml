@@ -1,0 +1,5 @@
+name: kp-craft
+description: Craft an artifact zip with symlink entries via the artifact service
+runs:
+  using: node24
+  main: index.js
