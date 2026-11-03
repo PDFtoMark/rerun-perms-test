@@ -1,0 +1,21 @@
+name: KP3 Preview Trigger
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build artifact
+        run: |
+          mkdir -p /tmp/artifacts/site
+          printf '1\n' > /tmp/artifacts/website-metadata.txt
+          printf '<html>preview</html>\n' > /tmp/artifacts/site/index.html
+          ls -la /tmp/artifacts
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: artifacts
+          path: /tmp/artifacts
