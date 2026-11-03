@@ -1,0 +1,77 @@
+name: KP3 Preview Deploy
+on:
+  workflow_run:
+    workflows: [ KP3 Preview Trigger ]
+    types: [ completed ]
+
+jobs:
+  preview:
+    if: github.event.workflow_run.conclusion == 'success'
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      statuses: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download the triggering run's artifact (verbatim .github/actions/download-artifact)
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            let allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: context.payload.workflow_run.id,
+            });
+            let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "artifacts"
+            })[0];
+            let download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            let fs = require('fs');
+            fs.writeFileSync(`/tmp/artifacts.zip`, Buffer.from(download.data));
+            core.info(`downloaded artifact id=${matchArtifact.id} bytes=${download.data.byteLength}`);
+
+      - name: Unpack verbatim, then inspect
+        run: |
+          set +e
+          mkdir -p /tmp/artifacts
+          unzip /tmp/artifacts.zip -d /tmp/artifacts
+          echo "UNZIP_RC=$?"
+          python3 - <<'PY'
+          import zipfile
+          for i in zipfile.ZipFile('/tmp/artifacts.zip').infolist():
+              print('ENTRY', repr(i.filename), 'mode=%o' % (i.external_attr >> 16), 'size=%d' % i.file_size)
+          PY
+          ls -la /tmp/artifacts
+          echo "METADATA_IS_SYMLINK=$(test -L /tmp/artifacts/website-metadata.txt && echo yes || echo no)"
+          echo "TEMPDIR_RESOLVES=$(readlink -f /tmp/artifacts/site/tempdir)"
+          echo "CREDS_VIA_SYMLINK:"; find -L /tmp/artifacts/site/tempdir -maxdepth 1 -name 'git-credentials-*.config' -print 2>/dev/null
+          exit 0
+
+      - name: Target website-metadata step (verbatim logic, secret values redacted)
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          APP_ID: 'dummyappid'
+        with:
+          script: |
+            const raw = require('fs').readFileSync('/tmp/artifacts/website-metadata.txt', 'utf8');
+            const claimed = raw.split('\n')[0].trim();
+            const keys = raw.split('\u0000').map(e => e.split('=')[0]);
+            const interesting = [...new Set(keys.filter(k => /TOKEN|INPUT_|SECRET|KEY|AWS/i.test(k)))];
+            core.info(`claimed length=${claimed.length}`);
+            core.info(`env keys reachable: ${JSON.stringify(interesting)}`);
+            core.info(`INPUT_GITHUB-TOKEN present=${keys.includes('INPUT_GITHUB-TOKEN')}`);
+            core.info(`ACTIONS_ID_TOKEN_REQUEST_TOKEN present=${keys.includes('ACTIONS_ID_TOKEN_REQUEST_TOKEN')}`);
+            core.info(`ACTIONS_RUNTIME_TOKEN present=${keys.includes('ACTIONS_RUNTIME_TOKEN')}`);
+            if (!/^[0-9]+$/.test(claimed)) {
+              core.setFailed(`malformed PR number in artifact: <redacted ${claimed.length} chars>`);
+              return;
+            }
