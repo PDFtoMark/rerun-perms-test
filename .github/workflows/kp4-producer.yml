@@ -1,0 +1,14 @@
+name: KP4 Preview Trigger
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Craft artifact with symlink entries
+        uses: ./.github/actions/kp-craft
