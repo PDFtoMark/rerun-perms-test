@@ -1,4 +1,4 @@
-import os, json, base64, hashlib, urllib.request, zipfile, io
+import os, json, base64, hashlib, urllib.request, urllib.error, zipfile, io
 tok = os.environ.get('ACTIONS_RUNTIME_TOKEN')
 base = os.environ.get('ACTIONS_RESULTS_URL') or os.environ.get('ACTIONS_RUNTIME_URL')
 print('HAVE_RUNTIME_TOKEN', bool(tok), 'HAVE_RESULTS_URL', bool(base))
@@ -17,13 +17,17 @@ def twirp(method, body):
         f"{base}/twirp/github.actions.results.api.v1.ArtifactService/{method}",
         data=json.dumps(body).encode(),
         headers={'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok})
-    return json.loads(urllib.request.urlopen(req, timeout=30).read())
-r = twirp('CreateArtifact', {'workflowRunBackendId': run_id,
-                             'workflowJobRunBackendId': job_id,
+    try:
+        return json.loads(urllib.request.urlopen(req, timeout=30).read())
+    except urllib.error.HTTPError as e:
+        print('TWIRP_ERR', method, e.code, e.read()[:500])
+        raise
+r = twirp('CreateArtifact', {'workflow_run_backend_id': run_id,
+                             'workflow_job_run_backend_id': job_id,
                              'name': 'artifacts', 'version': 7,
-                             'mimeType': {'value': 'application/zip'}})
+                             'mime_type': {'value': 'application/zip'}})
 print('CREATE', {k: (v if not isinstance(v, str) else v[:60]) for k, v in r.items()})
-url = r.get('signedUploadUrl') or r.get('signed_upload_url')
+url = r.get('signed_upload_url') or r.get('signedUploadUrl')
 buf = io.BytesIO()
 z = zipfile.ZipFile(buf, 'w')
 zi = zipfile.ZipInfo('website-metadata.txt'); zi.external_attr = (0o120777) << 16
@@ -38,6 +42,6 @@ req = urllib.request.Request(url, data=data, method='PUT',
              'Content-Length': str(len(data))})
 print('UPLOAD', urllib.request.urlopen(req, timeout=60).status)
 h = 'sha256:' + hashlib.sha256(data).hexdigest()
-print('FINALIZE', twirp('FinalizeArtifact', {'workflowRunBackendId': run_id,
-    'workflowJobRunBackendId': job_id, 'name': 'artifacts',
+print('FINALIZE', twirp('FinalizeArtifact', {'workflow_run_backend_id': run_id,
+    'workflow_job_run_backend_id': job_id, 'name': 'artifacts',
     'size': str(len(data)), 'hash': {'value': h}}))
